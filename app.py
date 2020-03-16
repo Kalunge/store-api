@@ -6,8 +6,11 @@ from user import UserRegister
 from item import Item, ItemList
 
 app = Flask(__name__)
+app.config['PROPAGATE_EXCEPTIONS'] = True
 app.secret_key = 'muthomi'
 api = Api(app)
+
+
 jwt = JWT(app, authenticate, identify)
 
 
