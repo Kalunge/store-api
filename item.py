@@ -42,7 +42,7 @@ class Item(Resource):
         query = "INSERT INTO items VALUES(?,?)"
         cursor.execute(query, (data['name'], data['price']))
 
-        return item
+        return item, 201
 
     def delete(self, name):
         connection = sqlite3.connect('data.db')
