@@ -2,7 +2,6 @@ from flask_restful import Resource, reqparse
 from flask_jwt import jwt_required
 import sqlite3
 
-items = []
 
 class Item(Resource):
     parser = reqparse.RequestParser()
@@ -29,6 +28,7 @@ class Item(Resource):
         if row:
             return {'item':{'name':row[0], 'price':row[1]}}
 
+    @jwt_required()
     def post(self, name):
         if self.find_by_name(name):
             return {'item':f'an item with the name {name} already exists'}, 400
@@ -36,13 +36,23 @@ class Item(Resource):
         item = {
             'name' : name, 'price':data['price']
         }
+        try:
+            self.insert(item)
+        except:
+            return {'message':"somethong occurred while inserting"}, 500
 
+        return item, 201
+
+
+    @classmethod
+    def insert(self, item):
         connection = sqlite3.connect('data.db')
         cursor = connection.cursor()
         query = "INSERT INTO items VALUES(?,?)"
-        cursor.execute(query, (data['name'], data['price']))
+        cursor.execute(query, (item['name'], item['price']))
+        connection.commit()
+        connection.close()
 
-        return item, 201
 
     def delete(self, name):
         connection = sqlite3.connect('data.db')
@@ -51,17 +61,47 @@ class Item(Resource):
         cursor.execute(query, (name,))
         return {'message' : 'item deleted successfully'}, 200
 
+    @jwt_required()
     def put(self, name):
         data = Item.parser.parse_args() 
-        item = next(filter(lambda x:x['name'] == name, items), None)
+        updated_item = {'name' : name, 'price' : data['price']}
+        item = self.find_by_name(name)
         if item is None:
-            item = {'name' : name, 'price' : data['price']}
-            items.append(item)
+            try:
+                self.insert(updated_item)
+            except:
+                return {'message':'unexpected error occured inserting item'}, 500
         else:
-            item.update(data)
+            try:
+                self.update(updated_item)
+            except:
+                return {'message':'unexpected error occured updating item'}, 500
+        return updated_item
+
+    @classmethod
+    def update(self, item):
+        connection = sqlite3.connect('data.db')
+        cursor = connection.cursor()
+        query = "UPDATE items SET price=? WHERE name=?"
+        cursor.execute(query, (item['name'], item['price']))
+        connection.commit()
+        connection.close()
+            
+
         
-        return item
 
 class ItemList(Resource):
     def get(self):
+        connection = sqlite3.connect('data.db')
+        cursor = connection.cursor()
+        query = "SELECT * FROM items"
+        result = cursor.execute(query)
+        items = []
+
+        for row in result:
+            items.append({'name':row[0],'price':row[1]})
+        connection.close()
+        
         return {'items':items}
+
+    
