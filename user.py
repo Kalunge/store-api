@@ -64,6 +64,7 @@ class UserRegister(Resource):
         cursor.execute(query, (data['username'], data['password']))
         connection.commit()
         connection.close()
+        
         return {'message':'user successfullt created'}, 201
         
         
